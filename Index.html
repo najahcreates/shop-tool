@@ -1,1 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shop Billing Tool</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+    .product-sheet, .billing-area {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .product-sheet {
+      background-color: #f9f9f9;
+      border-right: 1px solid #ccc;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    th {
+      background-color: #eee;
+    }
+    h2 {
+      margin-top: 0;
+    }
+    .billing-area ul {
+      list-style: none;
+      padding: 0;
+    }
+    .billing-area li {
+      padding: 5px 0;
+    }
+    .controls {
+      margin-top: 10px;
+    }
+    .controls input {
+      padding: 5px;
+    }
+    button {
+      margin-top: 10px;
+      margin-right: 5px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      .print-section, .print-section * {
+        visibility: visible;
+      }
+      .print-section {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 20px;
+      }
+    }
+    .print-section {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="product-sheet">
+      <h2>Product Sheet</h2>
+      <table id="productTable">
+        <thead>
+          <tr>
+            <th>Select</th>
+            <th>Product</th>
+            <th>Price (₹)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="billing-area">
+      <h2>Billing</h2>
+      <ul id="billingList"></ul>
+      <div class="controls">
+        <label>Discount (%):
+          <input type="number" id="discountInput" value="0" min="0" max="100">
+        </label>
+      </div>
+      <p><strong>Subtotal: ₹<span id="subtotal">0</span></strong></p>
+      <p><strong>Discount: ₹<span id="discountAmt">0</span></strong></p>
+      <p><strong>Grand Total: ₹<span id="grandTotal">0</span></strong></p>
+      <button onclick="clearBill()">Clear Bill</button>
+      <button onclick="printBill()">Print Bill</button>
+      <button onclick="downloadPDF()">Download PDF</button>
+    </div>
+  </div>
+
+  <div class="print-section" id="printSection">
+    <h2>🌟 My Store</h2>
+    <p>Date: <span id="printDate"></span></p>
+    <hr>
+    <ul id="printList"></ul>
+    <p><strong>Subtotal: ₹<span id="printSubtotal"></span></strong></p>
+    <p><strong>Discount: ₹<span id="printDiscount"></span></strong></p>
+    <p><strong>Grand Total: ₹<span id="printGrandTotal"></span></strong></p>
+    <hr>
+    <p>🛍️ Thank you for shopping with us!</p>
+  </div>
+
+  <script>
+    const products = [
+      { name: "Apples", price: 50 },
+      { name: "Bananas", price: 30 },
+      { name: "Milk", price: 45 },
+      { name: "Bread", price: 25 },
+      { name: "Eggs", price: 60 }
+    ];
+
+    let billItems = JSON.parse(localStorage.getItem("bill")) || [];
+
+    function renderProductTable() {
+      const tableBody = document.querySelector("#productTable tbody");
+      tableBody.innerHTML = "";
+      products.forEach(product => {
+        const row = document.createElement("tr");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = billItems.some(item => item.name === product.name);
+        checkbox.addEventListener("change", () => toggleProduct(product));
+        const selectCell = document.createElement("td");
+        selectCell.appendChild(checkbox);
+        const nameCell = document.createElement("td");
+        nameCell.textContent = product.name;
+        const priceCell = document.createElement("td");
+        priceCell.textContent = product.price;
+        row.appendChild(selectCell);
+        row.appendChild(nameCell);
+        row.appendChild(priceCell);
+        tableBody.appendChild(row);
+      });
+    }
+
+    function toggleProduct(product) {
+      const exists = billItems.find(item => item.name === product.name);
+      if (exists) {
+        billItems = billItems.filter(item => item.name !== product.name);
+      } else {
+        billItems.push(product);
+      }
+      localStorage.setItem("bill", JSON.stringify(billItems));
+      updateBill();
+      renderProductTable();
+    }
+
+    function updateBill() {
+      const billingList = document.getElementById("billingList");
+      const discountInput = document.getElementById("discountInput");
+      const subtotalEl = document.getElementById("subtotal");
+      const discountAmtEl = document.getElementById("discountAmt");
+      const grandTotalEl = document.getElementById("grandTotal");
+
+      billingList.innerHTML = "";
+      let subtotal = 0;
+      billItems.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = `${item.name} - ₹${item.price}`;
+        billingList.appendChild(li);
+        subtotal += item.price;
+      });
+
+      const discount = parseFloat(discountInput.value || 0);
+      const discountAmt = subtotal * discount / 100;
+      const grandTotal = subtotal - discountAmt;
+
+      subtotalEl.textContent = subtotal.toFixed(2);
+      discountAmtEl.textContent = discountAmt.toFixed(2);
+      grandTotalEl.textContent = grandTotal.toFixed(2);
+    }
+
+    function clearBill() {
+      billItems = [];
+      localStorage.removeItem("bill");
+      updateBill();
+      renderProductTable();
+    }
+
+    function printBill() {
+      const printList = document.getElementById("printList");
+      const discount = parseFloat(document.getElementById("discountInput").value || 0);
+      const printDate = document.getElementById("printDate");
+      const subtotal = billItems.reduce((sum, item) => sum + item.price, 0);
+      const discountAmt = subtotal * discount / 100;
+      const grandTotal = subtotal - discountAmt;
+
+      printList.innerHTML = "";
+      billItems.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = `${item.name} - ₹${item.price}`;
+        printList.appendChild(li);
+      });
+
+      document.getElementById("printSubtotal").textContent = subtotal.toFixed(2);
+      document.getElementById("printDiscount").textContent = discountAmt.toFixed(2);
+      document.getElementById("printGrandTotal").textContent = grandTotal.toFixed(2);
+      printDate.textContent = new Date().toLocaleString();
+
+      window.print();
+    }
+
+    async function downloadPDF() {
+      const jsPDF = window.jspdf.jsPDF;
+      const doc = new jsPDF();
+      const discount = parseFloat(document.getElementById("discountInput").value || 0);
+      const subtotal = billItems.reduce((sum, item) => sum + item.price, 0);
+      const discountAmt = subtotal * discount / 100;
+      const grandTotal = subtotal - discountAmt;
+
+      let y = 10;
+      doc.setFontSize(16);
+      doc.text("🛍️ My Shop", 10, y); y += 10;
+      doc.setFontSize(12);
+      doc.text(`Date: ${new Date().toLocaleString()}`, 10, y); y += 10;
+      doc.text("Items:", 10, y); y += 10;
+
+      billItems.forEach(item => {
+        doc.text(`${item.name} - ₹${item.price}`, 10, y);
+        y += 8;
+      });
+
+      y += 5;
+      doc.text(`Subtotal: ₹${subtotal.toFixed(2)}`, 10, y); y += 8;
+      doc.text(`Discount: ₹${discountAmt.toFixed(2)} (${discount}%)`, 10, y); y += 8;
+      doc.text(`Grand Total: ₹${grandTotal.toFixed(2)}`, 10, y); y += 12;
+      doc.text("Thank you for shopping with us!", 10, y);
+      doc.save("Bill.pdf");
+    }
+
+    document.getElementById("discountInput").addEventListener("input", updateBill);
+    renderProductTable();
+    updateBill();
+  </script>
+</body>
+</html>
 
