@@ -2,77 +2,164 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Shop Billing Tool</title>
+  <title>Shop Billing Tool+</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f3f6fb;
+      color: #222;
     }
     .container {
       display: flex;
-      height: 100vh;
+      flex-wrap: wrap;
+      min-height: 100vh;
     }
     .product-sheet, .billing-area {
-      flex: 1;
+      flex: 1 1 300px;
+      min-width: 320px;
       padding: 20px;
-      overflow-y: auto;
+      background: #fff;
+      margin: 10px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     .product-sheet {
-      background-color: #f9f9f9;
-      border-right: 1px solid #ccc;
+      border-right: 2px solid #e3e3e3;
     }
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 10px;
+      background: #fafbfc;
+      border-radius: 6px;
+      overflow: hidden;
     }
     th, td {
-      border: 1px solid #ddd;
+      border: 1px solid #e3e3e3;
       padding: 8px;
+      text-align: center;
     }
     th {
-      background-color: #eee;
+      background: #e7f0fa;
+      font-weight: 600;
     }
     h2 {
       margin-top: 0;
+      color: #3976d8;
     }
     .billing-area ul {
       list-style: none;
       padding: 0;
     }
-    .billing-area li {
-      padding: 5px 0;
-    }
-    .controls {
+    .controls, .add-product-form {
       margin-top: 10px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
     }
-    .controls input {
-      padding: 5px;
+    .controls input, .add-product-form input {
+      padding: 6px;
+      border-radius: 4px;
+      border: 1px solid #bbb;
+      width: 80px;
     }
+    .controls label {
+      font-weight: 500;
+    }
+    .add-product-form input[type=text] { width: 120px; }
+    .add-product-form input[type=number] { width: 80px; }
     button {
       margin-top: 10px;
       margin-right: 5px;
-      padding: 8px 12px;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      background: #3976d8;
+      color: #fff;
+      font-weight: 600;
       cursor: pointer;
+      transition: background .2s;
+    }
+    button:hover {
+      background: #2856a2;
+    }
+    .danger {
+      background: #e74c3c;
+    }
+    .danger:hover {
+      background: #c0392b;
+    }
+    .billing-table {
+      width: 100%;
+      margin-top: 10px;
+      border-collapse: collapse;
+      background: #fafbfc;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .billing-table th, .billing-table td {
+      border: 1px solid #e3e3e3;
+      padding: 6px;
+      text-align: center;
+    }
+    .billing-table th {
+      background: #f3e7fa;
+    }
+    .summary {
+      margin-top: 12px;
+    }
+    @media (max-width: 900px) {
+      .container {
+        flex-direction: column;
+      }
+      .product-sheet, .billing-area {
+        min-width: unset;
+        margin: 10px 0;
+      }
     }
     @media print {
-      body * {
-        visibility: hidden;
-      }
-      .print-section, .print-section * {
-        visibility: visible;
-      }
+      body * { visibility: hidden; }
+      .print-section, .print-section * { visibility: visible; }
       .print-section {
         position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
+        left: 0; top: 0;
+        width: 100vw;
         padding: 20px;
+        background: #fff;
       }
     }
-    .print-section {
-      display: none;
+    .print-section { display: none; }
+    .customer-controls { margin-bottom: 12px; }
+    .tax-controls { margin-left: 20px; }
+    .edit-price { width: 60px; }
+    .remove-product { background: #e74c3c; color: #fff; border: none; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
+    .remove-product:hover { background: #c0392b; }
+    /* Footer styles */
+    .footer {
+      width: 100%;
+      text-align: center;
+      padding: 18px 0 10px 0;
+      font-size: 1rem;
+      color: #555;
+      background: none;
+      letter-spacing: 0.03em;
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+    .footer .heart {
+      color: #e74c3c;
+      font-size: 1.1em;
+      vertical-align: middle;
+      margin: 0 2px;
+    }
+    .footer a {
+      color: #3976d8;
+      text-decoration: none;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -80,12 +167,20 @@
   <div class="container">
     <div class="product-sheet">
       <h2>Product Sheet</h2>
+      <form class="add-product-form" onsubmit="addProduct(event)">
+        <input type="text" id="newProductName" placeholder="Product Name" required>
+        <input type="number" id="newProductPrice" placeholder="Price ₹" min="1" required>
+        <button type="submit">Add Product</button>
+      </form>
       <table id="productTable">
         <thead>
           <tr>
             <th>Select</th>
             <th>Product</th>
             <th>Price (₹)</th>
+            <th>Qty</th>
+            <th>Edit</th>
+            <th>Remove</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -93,62 +188,135 @@
     </div>
     <div class="billing-area">
       <h2>Billing</h2>
-      <ul id="billingList"></ul>
+      <div class="customer-controls">
+        <label>Customer Name:
+          <input type="text" id="customerName" placeholder="Enter name">
+        </label>
+      </div>
+      <table class="billing-table" id="billingTable">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Price (₹)</th>
+            <th>Qty</th>
+            <th>Total (₹)</th>
+            <th>Remove</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
       <div class="controls">
         <label>Discount (%):
           <input type="number" id="discountInput" value="0" min="0" max="100">
         </label>
+        <span class="tax-controls">
+          <label>GST (%): <input type="number" id="taxInput" value="0" min="0" max="100"></label>
+        </span>
       </div>
-      <p><strong>Subtotal: ₹<span id="subtotal">0</span></strong></p>
-      <p><strong>Discount: ₹<span id="discountAmt">0</span></strong></p>
-      <p><strong>Grand Total: ₹<span id="grandTotal">0</span></strong></p>
-      <button onclick="clearBill()">Clear Bill</button>
+      <div class="summary">
+        <p><strong>Subtotal: ₹<span id="subtotal">0</span></strong></p>
+        <p><strong>Discount: ₹<span id="discountAmt">0</span></strong></p>
+        <p><strong>GST: ₹<span id="taxAmt">0</span></strong></p>
+        <p><strong>Grand Total: ₹<span id="grandTotal">0</span></strong></p>
+      </div>
+      <button onclick="clearBill()" class="danger">Clear Bill</button>
       <button onclick="printBill()">Print Bill</button>
       <button onclick="downloadPDF()">Download PDF</button>
     </div>
   </div>
-
+  <footer class="footer">
+    Made with <span class="heart">❤️</span> by <a href="https://github.com/najahcreates" target="_blank" rel="noopener">NajahCreates</a> The Print option is on development
+  </footer>
   <div class="print-section" id="printSection">
     <h2>🌟 My Store</h2>
     <p>Date: <span id="printDate"></span></p>
+    <p>Customer: <span id="printCustomer"></span></p>
     <hr>
-    <ul id="printList"></ul>
+    <table style="width:100%;">
+      <thead>
+        <tr>
+          <th>Product</th><th>Price</th><th>Qty</th><th>Total</th>
+        </tr>
+      </thead>
+      <tbody id="printTable"></tbody>
+    </table>
     <p><strong>Subtotal: ₹<span id="printSubtotal"></span></strong></p>
     <p><strong>Discount: ₹<span id="printDiscount"></span></strong></p>
+    <p><strong>GST: ₹<span id="printTax"></span></strong></p>
     <p><strong>Grand Total: ₹<span id="printGrandTotal"></span></strong></p>
     <hr>
     <p>🛍️ Thank you for shopping with us!</p>
   </div>
-
   <script>
-    const products = [
+    // Persistent products and bill
+    let products = JSON.parse(localStorage.getItem("products")) || [
       { name: "Apples", price: 50 },
       { name: "Bananas", price: 30 },
       { name: "Milk", price: 45 },
       { name: "Bread", price: 25 },
       { name: "Eggs", price: 60 }
     ];
-
     let billItems = JSON.parse(localStorage.getItem("bill")) || [];
+    let customerName = localStorage.getItem("customerName") || '';
+
+    function saveProducts() {
+      localStorage.setItem("products", JSON.stringify(products));
+    }
+    function saveBill() {
+      localStorage.setItem("bill", JSON.stringify(billItems));
+    }
+    function saveCustomer() {
+      localStorage.setItem("customerName", customerName);
+    }
 
     function renderProductTable() {
       const tableBody = document.querySelector("#productTable tbody");
       tableBody.innerHTML = "";
-      products.forEach(product => {
+      products.forEach((product, idx) => {
         const row = document.createElement("tr");
+        // Select
+        const selectCell = document.createElement("td");
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.checked = billItems.some(item => item.name === product.name);
         checkbox.addEventListener("change", () => toggleProduct(product));
-        const selectCell = document.createElement("td");
         selectCell.appendChild(checkbox);
+        // Name
         const nameCell = document.createElement("td");
         nameCell.textContent = product.name;
+        // Price (editable)
         const priceCell = document.createElement("td");
-        priceCell.textContent = product.price;
+        const priceInput = document.createElement("input");
+        priceInput.type = "number";
+        priceInput.value = product.price;
+        priceInput.className = "edit-price";
+        priceInput.addEventListener("change", () => editProductPrice(idx, priceInput.value));
+        priceCell.appendChild(priceInput);
+        // Qty
+        const qtyCell = document.createElement("td");
+        const qtyInput = document.createElement("input");
+        qtyInput.type = "number";
+        qtyInput.min = 1;
+        qtyInput.value = getQty(product.name);
+        qtyInput.style.width = '40px';
+        qtyInput.addEventListener("change", () => setQty(product.name, parseInt(qtyInput.value)));
+        qtyCell.appendChild(qtyInput);
+        // Edit
+        const editCell = document.createElement("td");
+        editCell.innerHTML = '<span style="color:#999;">Edit above</span>';
+        // Remove
+        const removeCell = document.createElement("td");
+        const remBtn = document.createElement("button");
+        remBtn.className = "remove-product";
+        remBtn.textContent = "X";
+        remBtn.onclick = () => removeProduct(idx);
+        removeCell.appendChild(remBtn);
         row.appendChild(selectCell);
         row.appendChild(nameCell);
         row.appendChild(priceCell);
+        row.appendChild(qtyCell);
+        row.appendChild(editCell);
+        row.appendChild(removeCell);
         tableBody.appendChild(row);
       });
     }
@@ -158,65 +326,168 @@
       if (exists) {
         billItems = billItems.filter(item => item.name !== product.name);
       } else {
-        billItems.push(product);
+        billItems.push({ name: product.name, price: product.price, qty: 1 });
       }
-      localStorage.setItem("bill", JSON.stringify(billItems));
-      updateBill();
+      saveBill();
+      renderBillingTable();
       renderProductTable();
+    }
+
+    function getQty(productName) {
+      const item = billItems.find(item => item.name === productName);
+      return item ? item.qty : 1;
+    }
+    function setQty(productName, qty) {
+      if (qty < 1) qty = 1;
+      billItems = billItems.map(item => 
+        item.name === productName ? { ...item, qty } : item
+      );
+      saveBill();
+      renderBillingTable();
+      renderProductTable();
+    }
+
+    function editProductPrice(idx, newPrice) {
+      newPrice = parseFloat(newPrice);
+      if (!isNaN(newPrice) && newPrice > 0) {
+        products[idx].price = newPrice;
+        // Update bill price if product is billed
+        billItems = billItems.map(item => 
+          item.name === products[idx].name ? { ...item, price: newPrice } : item
+        );
+        saveProducts();
+        saveBill();
+        renderBillingTable();
+      }
+    }
+
+    function addProduct(e) {
+      e.preventDefault();
+      const name = document.getElementById("newProductName").value.trim();
+      const price = parseFloat(document.getElementById("newProductPrice").value);
+      if (!name || isNaN(price) || price <= 0) return;
+      products.push({ name, price });
+      saveProducts();
+      renderProductTable();
+      document.getElementById("newProductName").value = '';
+      document.getElementById("newProductPrice").value = '';
+    }
+
+    function removeProduct(idx) {
+      if (confirm("Remove product from sheet?")) {
+        const prodName = products[idx].name;
+        products.splice(idx, 1);
+        billItems = billItems.filter(item => item.name !== prodName);
+        saveProducts();
+        saveBill();
+        renderProductTable();
+        renderBillingTable();
+      }
+    }
+
+    function renderBillingTable() {
+      const billingTable = document.getElementById("billingTable").querySelector("tbody");
+      billingTable.innerHTML = "";
+      billItems.forEach((item, idx) => {
+        const row = document.createElement("tr");
+        // Name
+        const nameCell = document.createElement("td");
+        nameCell.textContent = item.name;
+        // Price
+        const priceCell = document.createElement("td");
+        priceCell.textContent = item.price;
+        // Qty
+        const qtyCell = document.createElement("td");
+        const qtyInput = document.createElement("input");
+        qtyInput.type = "number";
+        qtyInput.min = 1;
+        qtyInput.value = item.qty;
+        qtyInput.style.width = '40px';
+        qtyInput.addEventListener("change", () => {
+          setQty(item.name, parseInt(qtyInput.value));
+        });
+        qtyCell.appendChild(qtyInput);
+        // Total
+        const totalCell = document.createElement("td");
+        totalCell.textContent = (item.price * item.qty).toFixed(2);
+        // Remove
+        const remCell = document.createElement("td");
+        const remBtn = document.createElement("button");
+        remBtn.className = "remove-product";
+        remBtn.textContent = "X";
+        remBtn.onclick = () => {
+          billItems = billItems.filter((_, i) => i !== idx);
+          saveBill();
+          renderBillingTable();
+          renderProductTable();
+        };
+        remCell.appendChild(remBtn);
+        row.appendChild(nameCell);
+        row.appendChild(priceCell);
+        row.appendChild(qtyCell);
+        row.appendChild(totalCell);
+        row.appendChild(remCell);
+        billingTable.appendChild(row);
+      });
+      updateBill();
     }
 
     function updateBill() {
-      const billingList = document.getElementById("billingList");
       const discountInput = document.getElementById("discountInput");
+      const taxInput = document.getElementById("taxInput");
       const subtotalEl = document.getElementById("subtotal");
       const discountAmtEl = document.getElementById("discountAmt");
+      const taxAmtEl = document.getElementById("taxAmt");
       const grandTotalEl = document.getElementById("grandTotal");
-
-      billingList.innerHTML = "";
-      let subtotal = 0;
-      billItems.forEach(item => {
-        const li = document.createElement("li");
-        li.textContent = `${item.name} - ₹${item.price}`;
-        billingList.appendChild(li);
-        subtotal += item.price;
-      });
-
+      // Subtotal
+      let subtotal = billItems.reduce((sum, item) => sum + item.price * item.qty, 0);
+      // Discount
       const discount = parseFloat(discountInput.value || 0);
       const discountAmt = subtotal * discount / 100;
-      const grandTotal = subtotal - discountAmt;
-
+      // GST/Tax
+      const tax = parseFloat(taxInput.value || 0);
+      const taxAmt = ((subtotal - discountAmt) * tax) / 100;
+      // Grand Total
+      const grandTotal = subtotal - discountAmt + taxAmt;
       subtotalEl.textContent = subtotal.toFixed(2);
       discountAmtEl.textContent = discountAmt.toFixed(2);
+      taxAmtEl.textContent = taxAmt.toFixed(2);
       grandTotalEl.textContent = grandTotal.toFixed(2);
+      saveBill();
     }
 
     function clearBill() {
-      billItems = [];
-      localStorage.removeItem("bill");
-      updateBill();
-      renderProductTable();
+      if (confirm("Clear all billed items?")) {
+        billItems = [];
+        saveBill();
+        renderBillingTable();
+        renderProductTable();
+      }
     }
 
     function printBill() {
-      const printList = document.getElementById("printList");
+      const printTable = document.getElementById("printTable");
       const discount = parseFloat(document.getElementById("discountInput").value || 0);
-      const printDate = document.getElementById("printDate");
-      const subtotal = billItems.reduce((sum, item) => sum + item.price, 0);
+      const tax = parseFloat(document.getElementById("taxInput").value || 0);
+      const subtotal = billItems.reduce((sum, item) => sum + item.price * item.qty, 0);
       const discountAmt = subtotal * discount / 100;
-      const grandTotal = subtotal - discountAmt;
-
-      printList.innerHTML = "";
+      const taxAmt = ((subtotal - discountAmt) * tax) / 100;
+      const grandTotal = subtotal - discountAmt + taxAmt;
+      printTable.innerHTML = "";
       billItems.forEach(item => {
-        const li = document.createElement("li");
-        li.textContent = `${item.name} - ₹${item.price}`;
-        printList.appendChild(li);
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${item.name}</td>
+                         <td>₹${item.price}</td>
+                         <td>${item.qty}</td>
+                         <td>₹${(item.price * item.qty).toFixed(2)}</td>`;
+        printTable.appendChild(row);
       });
-
       document.getElementById("printSubtotal").textContent = subtotal.toFixed(2);
       document.getElementById("printDiscount").textContent = discountAmt.toFixed(2);
+      document.getElementById("printTax").textContent = taxAmt.toFixed(2);
       document.getElementById("printGrandTotal").textContent = grandTotal.toFixed(2);
-      printDate.textContent = new Date().toLocaleString();
-
+      document.getElementById("printDate").textContent = new Date().toLocaleString();
+      document.getElementById("printCustomer").textContent = customerName;
       window.print();
     }
 
@@ -224,34 +495,41 @@
       const jsPDF = window.jspdf.jsPDF;
       const doc = new jsPDF();
       const discount = parseFloat(document.getElementById("discountInput").value || 0);
-      const subtotal = billItems.reduce((sum, item) => sum + item.price, 0);
+      const tax = parseFloat(document.getElementById("taxInput").value || 0);
+      const subtotal = billItems.reduce((sum, item) => sum + item.price * item.qty, 0);
       const discountAmt = subtotal * discount / 100;
-      const grandTotal = subtotal - discountAmt;
-
+      const taxAmt = ((subtotal - discountAmt) * tax) / 100;
+      const grandTotal = subtotal - discountAmt + taxAmt;
       let y = 10;
       doc.setFontSize(16);
       doc.text("🛍️ My Shop", 10, y); y += 10;
       doc.setFontSize(12);
       doc.text(`Date: ${new Date().toLocaleString()}`, 10, y); y += 10;
+      doc.text(`Customer: ${customerName}`, 10, y); y += 10;
       doc.text("Items:", 10, y); y += 10;
-
       billItems.forEach(item => {
-        doc.text(`${item.name} - ₹${item.price}`, 10, y);
+        doc.text(`${item.name} - ₹${item.price} x ${item.qty} = ₹${(item.price*item.qty).toFixed(2)}`, 10, y);
         y += 8;
       });
-
       y += 5;
       doc.text(`Subtotal: ₹${subtotal.toFixed(2)}`, 10, y); y += 8;
       doc.text(`Discount: ₹${discountAmt.toFixed(2)} (${discount}%)`, 10, y); y += 8;
+      doc.text(`GST: ₹${taxAmt.toFixed(2)} (${tax}%)`, 10, y); y += 8;
       doc.text(`Grand Total: ₹${grandTotal.toFixed(2)}`, 10, y); y += 12;
       doc.text("Thank you for shopping with us!", 10, y);
       doc.save("Bill.pdf");
     }
 
     document.getElementById("discountInput").addEventListener("input", updateBill);
+    document.getElementById("taxInput").addEventListener("input", updateBill);
+    document.getElementById("customerName").addEventListener("input", function(e) {
+      customerName = e.target.value;
+      saveCustomer();
+    });
+    document.getElementById("customerName").value = customerName;
+
     renderProductTable();
-    updateBill();
+    renderBillingTable();
   </script>
 </body>
 </html>
-
